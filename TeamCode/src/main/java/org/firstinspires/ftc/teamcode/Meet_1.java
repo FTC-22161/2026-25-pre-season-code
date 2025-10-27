@@ -4,101 +4,73 @@ import com.qualcomm.robotcore.eventloop.opmode.*;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+
+import org.firstinspires.ftc.teamcode.mechanisms.Intake;
+import org.firstinspires.ftc.teamcode.mechanisms.MecDrive;
+import org.firstinspires.ftc.teamcode.mechanisms.Launcher;
+import org.firstinspires.ftc.teamcode.mechanisms.ApirlTagWebcam;
 
 
-@TeleOp(name = "Meet_0")
+@TeleOp(group = "Meets")
 public class Meet_1 extends LinearOpMode {
+    MecDrive drive = new MecDrive();
 
-    private DcMotor FL,FR,BL,BR,LL,LR,Intake;
+    Launcher launch = new Launcher();
 
-    private CRServo thing;
+    Intake intake = new Intake();
+    double forward,strafe,rotate;
 
-    private Servo gate;
+    VoltageSensor batteryVoltageSensor;
 
-    public double DriveSpeed;
+    private static final double FULLYCHARGEDBATTERYVOLTAGE = 14.0;
+
     @Override
     public void runOpMode() {
 
-        thing = hardwareMap.get(CRServo.class, "hi");
-        FL = hardwareMap.get(DcMotor.class, "FL");
+        drive.init(hardwareMap);
 
-        FR = hardwareMap.get(DcMotor.class, "FR");
+        launch.init(hardwareMap);
 
-        BL = hardwareMap.get(DcMotor.class, "BL");
+        intake.init(hardwareMap);
 
-        BR = hardwareMap.get(DcMotor.class, "BR");
 
-        LL = hardwareMap.get(DcMotor.class, "LL");
-
-        LR = hardwareMap.get(DcMotor.class, "LR");
-
-        Intake = hardwareMap.get(DcMotor.class, "Intake");
-
-        gate = hardwareMap.get(Servo.class, "gate");
-        double fire = 0;
-        double speed = .525;
         waitForStart();
         if (opModeIsActive()) {
+
             while (opModeIsActive()) {
-                // OpMode loop
                 drive();
-                launch();
-                intake();
-
-
 
                 if (gamepad2.right_bumper) {
-                    LL.setPower(0);
-                    LR.setPower(0);
+                    launch.go(0);
                 }else {
-                    LL.setPower(-speed);
-                    LR.setPower(speed);
+                    launch.go(.6);}
+
+                if (gamepad2.x) {
+                    launch.pos(.6);
+                }else {
+                    launch.pos(.07);}
+
+                if (gamepad2.right_trigger > 0) {
+                    intake.go(1);
+                }else if (gamepad2.left_trigger > 0 ) {
+                    intake.go(-1);
+                }else {
+                    intake.go(0);
                 }
             }
         }
     }
-    public void intake() {
-        if (gamepad2.right_trigger > 0) {
-            Intake.setPower(1);
-            thing.setPower(1);
-        }else if (gamepad2.left_trigger > 0) {
-            Intake.setPower(-1);
-            thing.setPower(-1);
-        }else {
-            Intake.setPower(0);
-        }
-    }
-    public void launch() {
-        if (gamepad2.x) {
-            gate.setPosition(0);
-        }
-//        double fire = 0;
-//        double speed = .5;
-//        if (gamepad2.right_bumper) {
-//            LL.setPower(0);
-//            LR.setPower(0);
-//        }
-//        LL.setPower(-speed);
-//        LR.setPower(speed);
-//
-//        if (gamepad2.dpad_up) {
-//             speed = .5;
-//        }else if (gamepad2.dpad_down) {
-//          speed = .75;
-//       }
-    }
     public void drive() {
-        FL.setPower(DriveSpeed * ((-gamepad1.left_stick_x) - (-gamepad1.left_stick_y) - (gamepad1.right_stick_x)));
-        BL.setPower(DriveSpeed * ((gamepad1.left_stick_x) - (-gamepad1.left_stick_y) - (gamepad1.right_stick_x)));
-        FR.setPower(DriveSpeed * ((-gamepad1.left_stick_x) - (gamepad1.left_stick_y) - (gamepad1.right_stick_x)));
-        BR.setPower(DriveSpeed * ((gamepad1.left_stick_x) - (gamepad1.left_stick_y) - (gamepad1.right_stick_x)));
+        forward = gamepad1.left_stick_y;
+        strafe = gamepad1.left_stick_x;
+        rotate = gamepad1.right_stick_x;
 
-
-        if (gamepad1.right_bumper) {
-            DriveSpeed = 1;
-        }
-        else {
-            DriveSpeed = 0.4;
-        }
+        drive.driveFieldRelative(forward,strafe,rotate);
+    }    public double getCompensatedPower(double basePower) {
+        double referenceVoltage = FULLYCHARGEDBATTERYVOLTAGE;
+        double currentVoltage = batteryVoltageSensor.getVoltage();
+        double compensatedPower = basePower * (referenceVoltage / currentVoltage);
+        return Math.min(1.0, compensatedPower); // Ensure power doesn't exceed max limit
     }
 }
