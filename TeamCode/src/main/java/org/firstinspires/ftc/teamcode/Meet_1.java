@@ -1,32 +1,37 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.qualcomm.robotcore.eventloop.opmode.*;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.mechanisms.ApirlTagWebcam;
 import org.firstinspires.ftc.teamcode.mechanisms.Intake;
 import org.firstinspires.ftc.teamcode.mechanisms.MecDrive;
 import org.firstinspires.ftc.teamcode.mechanisms.Launcher;
-import org.firstinspires.ftc.teamcode.mechanisms.ApirlTagWebcam;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 
-@TeleOp(group = "Meets")
+@TeleOp(name = "MEET 1",group = "Meets")
 public class Meet_1 extends LinearOpMode {
     MecDrive drive = new MecDrive();
+
+    DcMotor LL,LR;
 
     Launcher launch = new Launcher();
 
     Intake intake = new Intake();
+
+
     double forward,strafe,rotate;
-
-    VoltageSensor batteryVoltageSensor;
-
-    private static final double FULLYCHARGEDBATTERYVOLTAGE = 14.0;
 
     @Override
     public void runOpMode() {
+        LL = hardwareMap.get(DcMotor.class, "LL");
+        LR = hardwareMap.get(DcMotor.class, "LR");
+        LL.setDirection(DcMotor.Direction.REVERSE);
 
         drive.init(hardwareMap);
 
@@ -35,24 +40,57 @@ public class Meet_1 extends LinearOpMode {
         intake.init(hardwareMap);
 
 
+        double speed = .4;
+        boolean mode = true;
+
+
         waitForStart();
         if (opModeIsActive()) {
 
             while (opModeIsActive()) {
-                drive();
+
+                forward = gamepad1.left_stick_y;
+                strafe = gamepad1.left_stick_x;
+                rotate = gamepad1.right_stick_x;
+
+                drive.drive(forward,strafe,rotate,1);
+                if (gamepad1.a) {
+                    mode = !mode;
+                }
+                if (mode == true) {
+                    drive.drive(forward,strafe,rotate,1);
+                }else if (mode == false )  {
+                    drive.drive(forward,strafe,rotate,.5);
+                }
+
+                if (gamepad2.dpad_up && !(speed > .6) && gamepad2.dpadUpWasPressed()) {
+                    speed += .05;
+                }else if (gamepad2.dpad_down && !(speed < .3) && gamepad2.dpadDownWasPressed()) {
+                    speed -= .05;
+                }
+
+                telemetry.addData("Speed", speed);
+                telemetry.update();
+
+
 
                 if (gamepad2.right_bumper) {
                     launch.go(0);
+//                    LL.setPower(0);
+//                    LR.setPower(0);
                 }else {
-                    launch.go(.6);}
+                  launch.go(speed);
+//                    LL.setPower(getCompensatedPower(speed));
+//                    LR.setPower(getCompensatedPower(speed));
+                   }//speeds .4 to .49 from up close and .6? from far
 
                 if (gamepad2.x) {
                     launch.pos(.6);
                 }else {
-                    launch.pos(.07);}
+                    launch.pos(.01);}
 
                 if (gamepad2.right_trigger > 0) {
-                    intake.go(1);
+                    intake.go((1));
                 }else if (gamepad2.left_trigger > 0 ) {
                     intake.go(-1);
                 }else {
@@ -60,17 +98,5 @@ public class Meet_1 extends LinearOpMode {
                 }
             }
         }
-    }
-    public void drive() {
-        forward = gamepad1.left_stick_y;
-        strafe = gamepad1.left_stick_x;
-        rotate = gamepad1.right_stick_x;
-
-        drive.driveFieldRelative(forward,strafe,rotate);
-    }    public double getCompensatedPower(double basePower) {
-        double referenceVoltage = FULLYCHARGEDBATTERYVOLTAGE;
-        double currentVoltage = batteryVoltageSensor.getVoltage();
-        double compensatedPower = basePower * (referenceVoltage / currentVoltage);
-        return Math.min(1.0, compensatedPower); // Ensure power doesn't exceed max limit
     }
 }
